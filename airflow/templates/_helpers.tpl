@@ -124,6 +124,30 @@ Also, we can't use a single if because lazy evaluation is not an option
 {{- end -}}
 
 {{/*
+Return the proper Airflow Metrics image name
+*/}}
+{{- define "airflow.metrics.image" -}}
+{{- $registryName := .Values.metrics.image.registry -}}
+{{- $repositoryName := .Values.metrics.image.repository -}}
+{{- $tag := .Values.metrics.image.tag | toString -}}
+{{/*
+Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
+but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
+Also, we can't use a single if because lazy evaluation is not an option
+*/}}
+{{- if .Values.global }}
+    {{- if .Values.global.imageRegistry }}
+        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
+    {{- else -}}
+        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+    {{- end -}}
+{{- else -}}
+    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
 Return the proper Docker Image Registry Secret Names
 */}}
 {{- define "airflow.imagePullSecrets" -}}
@@ -138,15 +162,39 @@ imagePullSecrets:
 {{- range .Values.global.imagePullSecrets }}
   - name: {{ . }}
 {{- end }}
-{{- else if or .Values.image.pullSecrets }}
+{{- else if or .Values.image.pullSecrets .Values.schedulerImage.pullSecrets .Values.workerImage.pullSecrets .Values.git.pullSecrets .Values.metrics.image.pullSecrets }}
 imagePullSecrets:
 {{- range .Values.image.pullSecrets }}
   - name: {{ . }}
 {{- end }}
+{{- range .Values.schedulerImage.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.workerImage.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.git.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.metrics.image.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
 {{- end -}}
-{{- else if or .Values.image.pullSecrets }}
+{{- else if or .Values.image.pullSecrets .Values.schedulerImage.pullSecrets .Values.workerImage.pullSecrets .Values.git.pullSecrets .Values.metrics.image.pullSecrets }}
 imagePullSecrets:
 {{- range .Values.image.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.schedulerImage.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.workerImage.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.git.pullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.metrics.image.pullSecrets }}
   - name: {{ . }}
 {{- end }}
 {{- end -}}
@@ -157,7 +205,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 */}}
 {{- define "airflow.postgresql.fullname" -}}
 {{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 24 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 Create a default fully qualified redis name.
@@ -165,7 +213,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 */}}
 {{- define "airflow.redis.fullname" -}}
 {{- $name := default "redis" .Values.redis.nameOverride -}}
-{{- printf "%s-%s-master" .Release.Name $name | trunc 24 | trimSuffix "-" -}}
+{{- printf "%s-%s-master" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 Create a template for the redis secret
@@ -173,17 +221,16 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 */}}
 {{- define "airflow.redis.secretName" -}}
 {{- $name := default "redis" .Values.redis.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 24 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{ template "airflow.dagFilesConfigMap" . }}
 {{/*
-Get the DAG files ConfigMap name.
+Get the secret name
 */}}
-{{- define "airflow.dagFilesConfigMap" -}}
-{{- if .Values.airflow.dagsConfigMap -}}
-{{- printf "%s" .Values.airflow.dagsConfigMap -}}
+{{- define "airflow.secretName" -}}
+{{- if .Values.airflow.auth.existingSecret -}}
+{{- printf "%s" .Values.airflow.auth.existingSecret -}}
 {{- else -}}
-{{- printf "%s-dag-files" (include "airflow.fullname" .) -}}
+{{- printf "%s" (include "airflow.fullname" .) -}}
 {{- end -}}
 {{- end -}}
