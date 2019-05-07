@@ -7,13 +7,13 @@ metadata:
     helm.sh/chart: {{ include "airflow.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    component: worker
+    app.kubernetes.io/component: worker
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "airflow.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      component: worker
+      app.kubernetes.io/component: worker
   serviceName: {{ template "airflow.fullname" . }}-headless
   replicas: {{ .Values.airflow.worker.replicas }}
   updateStrategy:
@@ -29,7 +29,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "airflow.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        component: worker
+        app.kubernetes.io/component: worker
     spec:
 {{- include "airflow.imagePullSecrets" . | indent 6 }}
       {{- if .Values.securityContext.enabled }}
@@ -49,14 +49,14 @@ spec:
       affinity:
 {{ toYaml .Values.affinity | indent 8 }}
       {{- end }}
-      {{- if and .Values.airflow.cloneDagFilesFromGit.enabled (not .Values.airflow.dagsConfigMap) }}
+      {{- if .Values.airflow.cloneDagFilesFromGit.enabled }}
       initContainers:
       - name: git-clone-repository
         image: "{{ template "git.image" . }}"
         imagePullPolicy: {{ .Values.git.pullPolicy | quote }}
         command: [ '/bin/sh', '-c' , 'git clone {{ .Values.airflow.cloneDagFilesFromGit.repository }} /dags && cd /dags && git checkout {{ .Values.airflow.cloneDagFilesFromGit.revision }}']
         volumeMounts:
-        - name: custom-dag-files
+        - name: git-cloned-dag-files
           mountPath: /dags
       {{- end }}
       containers:
@@ -166,27 +166,40 @@ spec:
           failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
         {{- end }}
         volumeMounts:
-        {{- if or (.Files.Glob "files/dags/*.py") .Values.airflow.dagsConfigMap .Values.airflow.cloneDagFilesFromGit.enabled }}
-        - name: custom-dag-files
-          mountPath: /opt/bitnami/airflow/dags
+        {{- if .Files.Glob "files/dags/*.py" }}
+        - name: local-dag-files
+          mountPath: /opt/bitnami/airflow/dags/local
         {{- end }}
-        {{- if .Values.airflow.airflowConfigurationConfigMap }}
+        {{- if .Values.airflow.dagsConfigMap }}
+        - name: external-dag-files
+          mountPath: /opt/bitnami/airflow/dags/external
+        {{- end }}
+        {{- if .Values.airflow.cloneDagFilesFromGit.enabled }}
+        - name: git-cloned-dag-files
+          mountPath: /opt/bitnami/airflow/dags/git
+        {{- end }}
+        {{- if .Values.airflow.configurationConfigMap }}
         - name: custom-configuration-file
           mountPath: /opt/bitnami/airflow/airflow.cfg
           subPath: airflow.cfg
         {{- end }}
       volumes:
-      {{- if or (.Files.Glob "files/dags/*.py") .Values.airflow.dagsConfigMap .Values.airflow.cloneDagFilesFromGit.enabled }}
-      - name: custom-dag-files
-        {{- if or (.Files.Glob "files/dags/*.py") .Values.airflow.dagsConfigMap }}
+      {{- if .Files.Glob "files/dags/*.py" }}
+      - name: local-dag-files
         configMap:
-          name: {{ template "airflow.dagFilesConfigMap" . }}
-        {{- else if .Values.airflow.cloneDagFilesFromGit.enabled }}
-        emptyDir: {}
-        {{- end }}
+          name: {{ template "airflow.fullname" . }}-dag-files
       {{- end }}
-      {{- if .Values.airflow.airflowConfigurationConfigMap }}
+      {{- if .Values.airflow.dagsConfigMap }}
+      - name: external-dag-files
+        configMap:
+          name: {{ .Values.airflow.dagsConfigMap }}
+      {{- end }}
+      {{- if .Values.airflow.cloneDagFilesFromGit.enabled }}
+      - name: git-cloned-dag-files
+        emptyDir: {}
+      {{- end }}
+      {{- if .Values.airflow.configurationConfigMap }}
       - name: custom-configuration-file
         configMap:
-          name: {{ .Values.airflow.airflowConfigurationConfigMap }}
+          name: {{ .Values.airflow.configurationConfigMap }}
       {{- end }}
