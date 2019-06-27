@@ -52,25 +52,25 @@ The following tables lists the configurable parameters of the Kafka chart and th
 | `image.registry`                          | Airflow image registry                                                                      | `docker.io`                                                  |
 | `image.repository`                        | Airflow image name                                                                          | `bitnami/airflow`                                            |
 | `image.tag`                               | Airflow image tag                                                                           | `{TAG_NAME}`                                                 |
-| `image.pullPolicy`                        | Airflow image pull policy                                                                   | `Always`                                                     |
+| `image.pullPolicy`                        | Airflow image pull policy                                                                   | `IfNotPresent`                                               |
 | `image.pullSecrets`                       | Specify docker-registry secret names as an array                                            | `[]` (does not add image pull secrets to deployed pods)      |
 | `image.debug`                             | Specify if debug values should be set                                                       | `false`                                                      |
 | `schedulerImage.registry`                 | Airflow Scheduler image registry                                                            | `docker.io`                                                  |
 | `schedulerImage.repository`               | Airflow Scheduler image name                                                                | `bitnami/airflow-shceduler`                                  |
 | `schedulerImage.tag`                      | Airflow Scheduler image tag                                                                 | `{TAG_NAME}`                                                 |
-| `schedulerImage.pullPolicy`               | Airflow Scheduler image pull policy                                                         | `Always`                                                     |
+| `schedulerImage.pullPolicy`               | Airflow Scheduler image pull policy                                                         | `IfNotPresent`                                               |
 | `schedulerImage.pullSecrets`              | Specify docker-registry secret names as an array                                            | `[]` (does not add image pull secrets to deployed pods)      |
 | `schedulerImage.debug`                    | Specify if debug values should be set                                                       | `false`                                                      |
 | `workerImage.registry`                    | Airflow Worker image registry                                                               | `docker.io`                                                  |
 | `workerImage.repository`                  | Airflow Worker image name                                                                   | `bitnami/airflow-worker`                                     |
 | `workerImage.tag`                         | Airflow Worker image tag                                                                    | `{TAG_NAME}`                                                 |
-| `workerImage.pullPolicy`                  | Airflow Worker image pull policy                                                            | `Always`                                                     |
+| `workerImage.pullPolicy`                  | Airflow Worker image pull policy                                                            | `IfNotPresent`                                               |
 | `workerImage.pullSecrets`                 | Specify docker-registry secret names as an array                                            | `[]` (does not add image pull secrets to deployed pods)      |
 | `workerImage.debug`                       | Specify if debug values should be set                                                       | `false`                                                      |
 | `git.registry`                            | Git image registry                                                                          | `docker.io`                                                  |
 | `git.repository`                          | Git image name                                                                              | `bitnami/git`                                                |
 | `git.tag`                                 | Git image tag                                                                               | `{TAG_NAME}`                                                 |
-| `git.pullPolicy`                          | Git image pull policy                                                                       | `Always`                                                     |
+| `git.pullPolicy`                          | Git image pull policy                                                                       | `IfNotPresent`                                               |
 | `git.pullSecrets`                         | Specify docker-registry secret names as an array                                            | `[]` (does not add image pull secrets to deployed pods)      |
 | `updateStrategy`                          | Update strategy for the stateful set                                                        | `RollingUpdate`                                              |
 | `rollingUpdatePartition`                  | Partition update strategy                                                                   | `nil`                                                        |
@@ -236,3 +236,9 @@ helm install --name my-release bitnami/airflow \
              --set airflow.cloneDagFilesFromGit.branch=master
              --set airflow.cloneDagFilesFromGit.interval=60
 ```
+
+## Notable changes
+
+### 1.0.0
+
+This release updates the PostgreSQL chart dependency to use PostgreSQL 11.x. You need to migrate the existing PostgreSQL data to this version before upgrading to this release. For more information follow [this link](https://github.com/helm/charts/tree/master/stable/postgresql#500).
